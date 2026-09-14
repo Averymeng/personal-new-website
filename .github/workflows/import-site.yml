@@ -1,0 +1,45 @@
+name: Import current published website
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-site.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  import-site:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download current public website
+        shell: bash
+        run: |
+          set -euo pipefail
+          site_url="https://zerzerrr-personal-ip-portfolio.brentthorntonuwu.chatgpt.site/"
+          site_host="zerzerrr-personal-ip-portfolio.brentthorntonuwu.chatgpt.site"
+          work_dir="$(mktemp -d)"
+          wget             --mirror             --page-requisites             --convert-links             --adjust-extension             --no-parent             --domains "$site_host"             --directory-prefix "$work_dir"             "$site_url"
+          rm -rf docs
+          mkdir -p docs
+          cp -a "$work_dir/$site_host/." docs/
+          touch docs/.nojekyll
+
+      - name: Save snapshot to repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          if git diff --cached --quiet; then
+            echo "No website changes detected."
+          else
+            git commit -m "Import current published website snapshot"
+            git push
+          fi
